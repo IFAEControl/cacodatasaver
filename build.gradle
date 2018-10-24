@@ -1,0 +1,121 @@
+apply plugin: 'java'
+
+def objectname = 'CameraControlCatcher'
+def buildversion = '1.0.0'
+
+def CTAinstalldir = '/usr/share/CTA'
+def installdir = CTAinstalldir + '/caco/'
+def libdir = CTAinstalldir + '/lib/'
+def bindir = CTAinstalldir + '/bin/'
+
+def cacolib = 'CaCoBase'
+def cacolibversion = '1.0.0'
+def jnilib = 'JNILibrary'
+def jnilibversion = '1.0.0'
+def opcualib = 'Prosys-OPC-UA-Java-SDK-Client-Server-Binary-2.2.6-708'
+def opcua_stacklib = 'Opc.Ua.Stack-1.02.337.10'
+
+
+
+repositories {
+	mavenCentral()
+	maven { url "http://repo1.maven.org" }
+	flatDir {
+       dirs './lib', '/usr/share/java', '/usr/share/CTA/lib' 
+   }
+}
+
+dependencies {
+	compile name: jnilib
+	compile name: opcualib
+	compile name: opcua_stacklib
+	compile name: cacolib
+	compile group: 'javax.servlet', name: 'javax.servlet-api', version: '3.0.1'
+	compile group: 'org.jfree', name: 'jfreechart', version: '1.5.0'
+	compile group: 'log4j', name: 'log4j', version: '1.2.17'
+	compile group: 'jline', name: 'jline', version: '2.13'
+	compile group: 'commons-daemon', name: 'commons-daemon', version: '1.0.9'
+	testCompile group: 'junit', name: 'junit', version: '4.+'
+	runtime name: 'Opc.Ua.Stack-1.02.337.10'
+	runtime name: 'Prosys-OPC-UA-Java-SDK-Client-Server-Binary-2.2.6-708'
+}
+
+jar {
+    baseName objectname
+    version buildversion
+    manifest {
+    attributes 'Main-Class': 'cat.ifae.cta.cameracontrolcatcher.Initializer',
+      	'Implementation-Title': 'ndeploy',
+		'Implementation-Version': buildversion,
+		'Built-By': System.getProperty('user.name'),
+		'Built-Date': new Date(),
+		'Built-JDK': System.getProperty('java.version'),
+		'Class-Path': configurations.compile.collect { libdir + "$it.name" }.join(' ') + configurations.runtime.collect { libdir + "$it.name" }.join(' ')
+  }
+}
+
+clean{
+    delete './output/'
+}
+
+
+task install(dependsOn: ["installJar", "installOther", test]){
+	description = "Installs all the code locally"
+}
+
+task create_package(dependsOn: ["createJar", "installOther", test, "tgzTask"]){
+	description = "Creates a package that will be ready for being install in any machine" 
+}
+
+task createJar(dependsOn:[jar])<< 
+	{
+	CTAinstalldir = './build/CTA'
+	installdir = CTAinstalldir + '/caco/'
+	libdir = CTAinstalldir + '/lib/'
+	bindir = CTAinstalldir + '/bin/'
+    copy {
+    	from jar
+    	into libdir
+    }
+    def basejar = "./" +  objectname + '-' + buildversion + '.jar'
+	def baselink = libdir + objectname + '.jar'
+	ant.symlink(resource: basejar, link: baselink, overwrite: true)
+}
+
+
+task installJar(dependsOn:[jar])<< 
+	{
+    copy {
+    	from jar
+    	into libdir
+    }
+    def basejar = "./" +  objectname + '-' + buildversion + '.jar'
+	def baselink = libdir + objectname + '.jar'
+	ant.symlink(resource: basejar, link: baselink, overwrite: true)
+}
+
+
+task installOther<< 
+	{
+    copy {
+        from './other/scripts/cacocatcher'
+        into bindir
+        fileMode = 0755
+    }
+	copy 
+    	{
+    	duplicatesStrategy 'EXCLUDE'
+    	exclude cacolib + '.jar' 
+    	exclude jnilib + '.jar'
+    	exclude opcualib + '.jar'
+    	exclude opcua_stacklib + '.jar'
+    	into libdir
+    	from configurations.testCompile + configurations.compile
+  	}
+}
+
+task tgzTask()<<
+	{
+	def basename = "./output/" + objectname + '_' + buildversion + ".tar.gz"
+   	ant.tar(destfile: basename, basedir: CTAinstalldir, compression: 'gzip')
+}

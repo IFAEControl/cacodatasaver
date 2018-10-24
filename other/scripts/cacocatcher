@@ -1,0 +1,16 @@
+#!/usr/bin/python
+import sys
+from subprocess import call
+
+BASECMD = "java"
+BASEARGS0 = "-jar"
+FOLDER = "/usr/share/CTA/lib"
+JAR = "CameraControlCatcher.jar"
+BASEARG1 = "{0}/{1}".format(FOLDER, JAR)
+
+if __name__ == '__main__':
+    try:
+        totalcmd = [BASECMD, BASEARGS0, BASEARG1] + sys.argv
+        call(totalcmd)
+    except:
+        print "Keyboard Interrupt"
